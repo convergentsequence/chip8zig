@@ -1,28 +1,29 @@
 const std = @import("std");
+const g = @import("graphics.zig");
 const SDL = @import("sdl2");
-const target_os = @import("builtin").os;
+
+fn clocked(comptime clock: usize, lastCycle: *i64, comptime callback: *const fn () anyerror!void) !void {
+    const currentCycle = std.time.milliTimestamp();
+    if (currentCycle - lastCycle.* >= 1000 / clock) {
+        try callback();
+        lastCycle.* = currentCycle;
+    }
+}
+
+fn something() !void {
+    std.debug.print("test\n", .{});
+}
 
 pub fn main() !void {
-    try SDL.init(.{
-        .video = true,
-        .events = true,
-        .audio = true,
-    });
-    defer SDL.quit();
+    var graphics = try g.Graphics.init(640 * 2, 320 * 2);
+    defer graphics.quit();
 
-    var window = try SDL.createWindow(
-        "SDL.zig Basic Demo",
-        .{ .centered = {} },
-        .{ .centered = {} },
-        640,
-        480,
-        .{ .vis = .shown },
-    );
-    defer window.destroy();
+    var a = fn () void {
+        std.deb
+    };
+    _ = a;
 
-    var renderer = try SDL.createRenderer(window, null, .{ .accelerated = true });
-    defer renderer.destroy();
-
+    var lastCycle: i64 = 0;
     mainLoop: while (true) {
         while (SDL.pollEvent()) |ev| {
             switch (ev) {
@@ -38,41 +39,9 @@ pub fn main() !void {
 
                 else => {},
             }
+
         }
-
-        try renderer.setColorRGB(0, 0, 0);
-        try renderer.clear();
-
-        try renderer.setColor(SDL.Color.parse("#F7A41D") catch unreachable);
-        try renderer.drawRect(SDL.Rectangle{
-            .x = 270,
-            .y = 215,
-            .width = 100,
-            .height = 50,
-        });
-
-        if (target_os.tag != .linux) {
-            // Ubuntu CI doesn't have this function available yet
-            try renderer.drawGeometry(
-                null,
-                &[_]SDL.Vertex{
-                    .{
-                        .position = .{ .x = 400, .y = 150 },
-                        .color = SDL.Color.rgb(255, 0, 0),
-                    },
-                    .{
-                        .position = .{ .x = 350, .y = 200 },
-                        .color = SDL.Color.rgb(0, 0, 255),
-                    },
-                    .{
-                        .position = .{ .x = 450, .y = 200 },
-                        .color = SDL.Color.rgb(0, 255, 0),
-                    },
-                },
-                null,
-            );
-        }
-
-        renderer.present();
+        try graphics.render();
+        try clocked(60, &lastCycle, something);
     }
 }
