@@ -18,11 +18,6 @@ pub fn main() !void {
     var graphics = try g.Graphics.init(640 * 2, 320 * 2);
     defer graphics.quit();
 
-    var a = fn () void {
-        std.deb
-    };
-    _ = a;
-
     var lastCycle: i64 = 0;
     mainLoop: while (true) {
         while (SDL.pollEvent()) |ev| {
