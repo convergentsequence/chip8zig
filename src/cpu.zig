@@ -3,6 +3,8 @@ const SDL = @import("sdl2");
 
 const print = std.debug.print;
 
+const VerboseOpcode: bool = true;
+
 pub const CPU = struct {
     const Self = @This();
 
@@ -31,9 +33,13 @@ pub const CPU = struct {
     stack: [16]u16,
     SP: u8 = 0,
     PC: u16 = 0x200,
+    I: u16 = 0,
     keycodes: [16]bool,
     keycode: i32 = 0,
-    io_block: bool = false,
+    ioBlock: bool = false,
+    delayTimer: u8 = 0,
+    soundTimer: u8 = 0,
+    graphicalBuffer: [32 * 64]bool,
 
     pub fn init() Self {
         return Self{
@@ -41,12 +47,13 @@ pub const CPU = struct {
             .V = std.mem.zeroes([16]u8),
             .stack = std.mem.zeroes([16]u16),
             .keycodes = std.mem.zeroes([16]bool),
+            .graphicalBuffer = std.mem.zeroes([32 * 64]bool),
         };
     }
 
-    fn cycle(self: *Self) !void {
-        _ = self;
-        //print("cycle\n", .{});
+    inline fn verboseOpcode(PC: u16, opcode: u16, msg: [:0]const u8) void {
+        if (VerboseOpcode)
+            print("{X:3>0}: {X:4>0} {s}\n", .{ PC, opcode, msg });
     }
 
     // returns false if emulator should exit
@@ -68,12 +75,31 @@ pub const CPU = struct {
         return true;
     }
 
-    pub fn clocked_cycle(self: *Self, comptime clock: usize) !void {
+    pub fn decrementTimers(self: *Self) void {
+        if (self.delayTimer > 0) self.delayTimer -= 1;
+        if (self.soundTimer > 0) self.soundTimer -= 1;
+    }
+
+    fn cycle(self: *Self) !bool {
+        var opcode: u16 = @as(u16, self.memory[self.PC]) << 8 | self.memory[self.PC + 1];
+        if (opcode == 0) {
+            print("Exiting, PC: {d}, OPCODE: {X:4>0}\n", .{ self.PC, opcode });
+            return false;
+        }
+        self.PC += 2;
+        verboseOpcode(self.PC, opcode, "This is an opcode");
+
+        return true;
+    }
+
+    pub fn clocked_cycle(self: *Self, comptime clock: usize) !bool {
         const millis = std.time.milliTimestamp();
         if (millis - self.lastCycle >= 1000 / clock) {
-            if (!self.io_block) try self.cycle();
+            if (!self.ioBlock) return try self.cycle();
             self.lastCycle = millis;
         }
+
+        return true;
     }
 
     pub fn loadFileToMem(self: *Self, pth: []const u8) !void {

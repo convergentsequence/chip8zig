@@ -35,7 +35,7 @@ pub fn main() !void {
         while (SDL.pollEvent()) |ev| {
             if (!CPU.handle_io(ev)) break :mainLoop;
         }
-        try graphics.render();
-        try CPU.clocked_cycle(60);
+        try graphics.clocked_render(&CPU);
+        if(!try CPU.clocked_cycle(500)) break;
     }
 }
