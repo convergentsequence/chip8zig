@@ -1,24 +1,14 @@
 const std = @import("std");
 const g = @import("graphics.zig");
+const c = @import("cpu.zig");
 const SDL = @import("sdl2");
-
-fn clocked(comptime clock: usize, lastCycle: *i64, comptime callback: *const fn () anyerror!void) !void {
-    const currentCycle = std.time.milliTimestamp();
-    if (currentCycle - lastCycle.* >= 1000 / clock) {
-        try callback();
-        lastCycle.* = currentCycle;
-    }
-}
-
-fn something() !void {
-    std.debug.print("test\n", .{});
-}
 
 pub fn main() !void {
     var graphics = try g.Graphics.init(640 * 2, 320 * 2);
     defer graphics.quit();
 
-    var lastCycle: i64 = 0;
+    var CPU = c.CPU.init();
+
     mainLoop: while (true) {
         while (SDL.pollEvent()) |ev| {
             switch (ev) {
@@ -37,6 +27,6 @@ pub fn main() !void {
 
         }
         try graphics.render();
-        try clocked(60, &lastCycle, something);
+        try CPU.clocked_cycle(60);
     }
 }
