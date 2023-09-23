@@ -1,4 +1,5 @@
 const std = @import("std");
+const SDL = @import("sdl2");
 
 const print = std.debug.print;
 
@@ -25,12 +26,21 @@ pub const CPU = struct {
     };
 
     memory: [4096]u8,
-    lastCycle: i64,
+    lastCycle: i64 = 0,
+    V: [16]u8,
+    stack: [16]u16,
+    SP: u8 = 0,
+    PC: u16 = 0x200,
+    keycodes: [16]bool,
+    keycode: i32 = 0,
+    io_block: bool = false,
 
     pub fn init() Self {
         return Self{
             .memory = std.mem.zeroes([4096]u8),
-            .lastCycle = 0,
+            .V = std.mem.zeroes([16]u8),
+            .stack = std.mem.zeroes([16]u16),
+            .keycodes = std.mem.zeroes([16]bool),
         };
     }
 
@@ -39,11 +49,30 @@ pub const CPU = struct {
         //print("cycle\n", .{});
     }
 
+    // returns false if emulator should exit
+    pub fn handle_io(self: *Self, ev: SDL.Event) bool {
+        _ = self;
+        switch (ev) {
+            .quit => {
+                return false;
+            },
+            .key_down => |key| {
+                switch (key.scancode) {
+                    .escape => return false,
+                    else => std.log.info("key pressed: {}\n", .{key.scancode}),
+                }
+            },
+
+            else => {},
+        }
+        return true;
+    }
+
     pub fn clocked_cycle(self: *Self, comptime clock: usize) !void {
         const millis = std.time.milliTimestamp();
         if (millis - self.lastCycle >= 1000 / clock) {
+            if (!self.io_block) try self.cycle();
             self.lastCycle = millis;
-            try self.cycle();
         }
     }
 
@@ -65,7 +94,6 @@ pub const CPU = struct {
 
         _ = try file.readAll(self.memory[0x200..]);
 
-        // load fontset into memory
         std.mem.copy(u8, &self.memory, &fontSet);
     }
 };
