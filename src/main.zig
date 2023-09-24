@@ -23,7 +23,6 @@ pub fn main() !void {
     defer print("Stopping emulator...\n", .{});
 
     const romPath = try getRomPath();
-    print("ROM path: {s}\n", .{romPath});
 
     var graphics = try g.Graphics.init(640 * 2, 320 * 2);
     defer graphics.quit();
@@ -33,9 +32,9 @@ pub fn main() !void {
 
     mainLoop: while (true) {
         while (SDL.pollEvent()) |ev| {
-            if (!cpu.handle_io(ev)) break :mainLoop;
+            if (!cpu.handleIO(ev)) break :mainLoop;
         }
-        try graphics.clocked_render(&cpu);
-        if(!try cpu.clocked_cycle(500)) break;
+        try graphics.clockedRender(&cpu);
+        if(!try cpu.clockedCycle(500)) break;
     }
 }

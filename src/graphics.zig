@@ -60,7 +60,7 @@ pub const Graphics = struct {
         self.renderer.present();
     }
 
-    pub fn clocked_render(self: *Self, CPU: *c.CPU) !void {
+    pub fn clockedRender(self: *Self, CPU: *c.CPU) !void {
         const current = std.time.milliTimestamp();
         if (current - self.lastRender >= 1000 / 60) {
             try self.render(CPU);

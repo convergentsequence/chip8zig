@@ -58,7 +58,7 @@ pub const CPU = struct {
     }
 
     // returns false if emulator should exit
-    pub fn handle_io(self: *Self, ev: SDL.Event) bool {
+    pub fn handleIO(self: *Self, ev: SDL.Event) bool {
         _ = self;
         switch (ev) {
             .quit => {
@@ -94,7 +94,7 @@ pub const CPU = struct {
         return true;
     }
 
-    pub fn clocked_cycle(self: *Self, comptime clock: usize) !bool {
+    pub fn clockedCycle(self: *Self, comptime clock: usize) !bool {
         const millis = std.time.milliTimestamp();
         if (millis - self.lastCycle >= 1000 / clock) {
             if (!self.ioBlock) return try self.cycle();

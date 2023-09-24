@@ -4,7 +4,7 @@ const CPU = @import("cpu.zig").CPU;
 const print = std.debug.print;
 const fmt = std.fmt;
 
-const VERBOSE_OPCODES: bool = true;
+const VERBOSE_OPCODES: bool = false;
 
 inline fn verboseOpcode(PC: u16, opcode: u16, msg: [:0]const u8) void {
     if (!VERBOSE_OPCODES) return;
