@@ -9,6 +9,9 @@ const VerboseOpcode: bool = true;
 pub const CPU = struct {
     const Self = @This();
 
+    const CONTINUE_EMULATOR: bool = true;
+    const STOP_EMULATOR: bool = false;
+
     const fontSet = [_]u8{
         0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
         0x20, 0x60, 0x20, 0x20, 0x70, // 1
@@ -62,17 +65,17 @@ pub const CPU = struct {
         _ = self;
         switch (ev) {
             .quit => {
-                return false;
+                return STOP_EMULATOR;
             },
             .key_down => |key| {
                 switch (key.scancode) {
-                    .escape => return false,
+                    .escape => return STOP_EMULATOR,
                     else => {},
                 }
             },
             else => {},
         }
-        return true;
+        return CONTINUE_EMULATOR;
     }
 
     pub fn decrementTimers(self: *Self) void {
@@ -80,26 +83,26 @@ pub const CPU = struct {
         if (self.soundTimer > 0) self.soundTimer -= 1;
     }
 
-    fn cycle(self: *Self) !bool {
+    fn cycle(self: *Self) bool {
         var opcode: u16 = @as(u16, self.memory[self.PC]) << 8 | self.memory[self.PC + 1];
         if (opcode == 0) {
             print("Exiting, PC: 0x{X:0>3}, OPCODE: 0x{X:0>4}\n", .{ self.PC, opcode });
-            return false;
+            return STOP_EMULATOR;
         }
 
         opcodes.handleOpcode(self, opcode);
 
-        return true;
+        return CONTINUE_EMULATOR;
     }
 
-    pub fn clockedCycle(self: *Self, comptime clock: usize) !bool {
+    pub fn clockedCycle(self: *Self, comptime clock: usize) bool {
         const millis = std.time.milliTimestamp();
         if (millis - self.lastCycle >= 1000 / clock) {
-            if (!self.ioBlock) return try self.cycle();
+            if (!self.ioBlock) return self.cycle();
             self.lastCycle = millis;
         }
 
-        return true;
+        return CONTINUE_EMULATOR;
     }
 
     pub fn loadFileToMem(self: *Self, pth: []const u8) !void {

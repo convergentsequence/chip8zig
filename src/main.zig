@@ -35,6 +35,6 @@ pub fn main() !void {
             if (!cpu.handleIO(ev)) break :mainLoop;
         }
         try graphics.clockedRender(&cpu);
-        if(!try cpu.clockedCycle(500)) break;
+        if(!cpu.clockedCycle(500)) break;
     }
 }
