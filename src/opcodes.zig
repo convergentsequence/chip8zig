@@ -31,7 +31,7 @@ inline fn opcodeUnknown() void {
 /// 0x00E0 -> clear screen
 inline fn opcodeCLS() void {
     verboseOpcode("Clearing screen");
-    @memset(cpu.graphicalBuffer[0 .. 32 * 64], false);
+    @memset(cpu.graphicalBuffer[0 .. 32 * 64], 0);
 }
 
 /// 0x00EE -> return from subroutine call

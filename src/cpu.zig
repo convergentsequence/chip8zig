@@ -40,7 +40,7 @@ pub const CPU = struct {
     ioBlock: bool = false,
     delayTimer: u8 = 0,
     soundTimer: u8 = 0,
-    graphicalBuffer: [64 * 32]bool,
+    graphicalBuffer: [64 * 32]u1,
 
     pub fn init() Self {
         return Self{
@@ -48,7 +48,7 @@ pub const CPU = struct {
             .V = std.mem.zeroes([16]u8),
             .stack = std.mem.zeroes([16]u16),
             .keycodes = std.mem.zeroes([16]bool),
-            .graphicalBuffer = std.mem.zeroes([32 * 64]bool),
+            .graphicalBuffer = std.mem.zeroes([32 * 64]u1),
         };
     }
 
