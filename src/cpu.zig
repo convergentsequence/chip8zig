@@ -1,5 +1,6 @@
 const std = @import("std");
 const SDL = @import("sdl2");
+const opcodes = @import("opcodes.zig");
 
 const print = std.debug.print;
 
@@ -39,7 +40,7 @@ pub const CPU = struct {
     ioBlock: bool = false,
     delayTimer: u8 = 0,
     soundTimer: u8 = 0,
-    graphicalBuffer: [32 * 64]bool,
+    graphicalBuffer: [64 * 32]bool,
 
     pub fn init() Self {
         return Self{
@@ -53,7 +54,7 @@ pub const CPU = struct {
 
     inline fn verboseOpcode(PC: u16, opcode: u16, msg: [:0]const u8) void {
         if (VerboseOpcode)
-            print("{X:3>0}: {X:4>0} {s}\n", .{ PC, opcode, msg });
+            print("0x{X:0>3}: 0x{X:0>4} {s}\n", .{ PC, opcode, msg });
     }
 
     // returns false if emulator should exit
@@ -66,7 +67,7 @@ pub const CPU = struct {
             .key_down => |key| {
                 switch (key.scancode) {
                     .escape => return false,
-                    else => std.log.info("key pressed: {}\n", .{key.scancode}),
+                    else => {},
                 }
             },
 
@@ -80,14 +81,15 @@ pub const CPU = struct {
         if (self.soundTimer > 0) self.soundTimer -= 1;
     }
 
+
     fn cycle(self: *Self) !bool {
         var opcode: u16 = @as(u16, self.memory[self.PC]) << 8 | self.memory[self.PC + 1];
         if (opcode == 0) {
-            print("Exiting, PC: {d}, OPCODE: {X:4>0}\n", .{ self.PC, opcode });
+            print("Exiting, PC: 0x{X:0>3}, OPCODE: 0x{X:0>4}\n", .{ self.PC, opcode });
             return false;
         }
-        self.PC += 2;
-        verboseOpcode(self.PC, opcode, "This is an opcode");
+
+        opcodes.handleOpcode(self, opcode);
 
         return true;
     }

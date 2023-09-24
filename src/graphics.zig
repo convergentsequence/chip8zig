@@ -42,13 +42,11 @@ pub const Graphics = struct {
         };
     }
 
-    fn renderGraphicalBuffer(self: *Self, CPU: *c.CPU) !void {
-        CPU.graphicalBuffer[5+26*64] = true;
-
+    fn renderGraphicalBuffer(self: *Self, cpu: *c.CPU) !void {
         var pixel: u8 = 0;
         for (0..64) |i| {
             for (0..32) |j| {
-                pixel = @as(u8, @intFromBool(CPU.graphicalBuffer[i + j * 64])) * 255;
+                pixel = @as(u8, @intFromBool(cpu.graphicalBuffer[i + j * 64])) * 255;
 
                 try self.renderer.setColorRGB(pixel, pixel, pixel);
                 try self.renderer.drawPoint(@intCast(i), @intCast(j));

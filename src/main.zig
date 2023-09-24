@@ -28,14 +28,14 @@ pub fn main() !void {
     var graphics = try g.Graphics.init(640 * 2, 320 * 2);
     defer graphics.quit();
 
-    var CPU = c.CPU.init();
-    try CPU.loadFileToMem(romPath);
+    var cpu = c.CPU.init();
+    try cpu.loadFileToMem(romPath);
 
     mainLoop: while (true) {
         while (SDL.pollEvent()) |ev| {
-            if (!CPU.handle_io(ev)) break :mainLoop;
+            if (!cpu.handle_io(ev)) break :mainLoop;
         }
-        try graphics.clocked_render(&CPU);
-        if(!try CPU.clocked_cycle(500)) break;
+        try graphics.clocked_render(&cpu);
+        if(!try cpu.clocked_cycle(500)) break;
     }
 }
