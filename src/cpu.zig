@@ -70,7 +70,6 @@ pub const CPU = struct {
                     else => {},
                 }
             },
-
             else => {},
         }
         return true;
@@ -80,7 +79,6 @@ pub const CPU = struct {
         if (self.delayTimer > 0) self.delayTimer -= 1;
         if (self.soundTimer > 0) self.soundTimer -= 1;
     }
-
 
     fn cycle(self: *Self) !bool {
         var opcode: u16 = @as(u16, self.memory[self.PC]) << 8 | self.memory[self.PC + 1];
