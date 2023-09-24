@@ -98,8 +98,8 @@ pub const CPU = struct {
     pub fn clockedCycle(self: *Self, comptime clock: usize) bool {
         const millis = std.time.milliTimestamp();
         if (millis - self.lastCycle >= 1000 / clock) {
-            if (!self.ioBlock) return self.cycle();
             self.lastCycle = millis;
+            if (!self.ioBlock) return self.cycle();
         }
 
         return CONTINUE_EMULATOR;
