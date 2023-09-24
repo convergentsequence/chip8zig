@@ -28,27 +28,27 @@ inline fn opcodeUnknown() void {
     verboseOpcode("Unknown Opcode");
 }
 
-// 0x00E0 -> clear screen
+/// 0x00E0 -> clear screen
 inline fn opcodeCLS() void {
     verboseOpcode("Clearing screen");
     @memset(cpu.graphicalBuffer[0 .. 32 * 64], false);
 }
 
-// 0x00EE -> return from subroutine call
+/// 0x00EE -> return from subroutine call
 inline fn opcodeRET() void {
     verboseOpcodeFmt("Returning from subroutine to: 0x{X:0>3}", .{cpu.stack[cpu.SP - 1]});
     cpu.SP -= 1;
     cpu.PC = cpu.stack[cpu.SP];
 }
 
-// 0x1NNN -> jump to location NNN
+/// 0x1NNN -> jump to location NNN
 inline fn opcodeJMP() void {
     const NNN: u16 = opcode & 0x0FFF;
     verboseOpcodeFmt("Jumping to location 0x{X:0>3}", .{NNN});
     cpu.PC = NNN;
 }
 
-// 0x2NNN -> jump to subroutine at NNN
+/// 0x2NNN -> jump to subroutine at NNN
 inline fn opcodeCALL() void {
     const NNN: u16 = opcode & 0x0FFF;
     verboseOpcodeFmt("Jumping to subroutine at 0x{X:0>3}", .{NNN});
@@ -60,6 +60,7 @@ inline fn opcodeCALL() void {
 pub fn handleOpcode(_cpu: *CPU, _opcode: u16) void {
     cpu = _cpu;
     opcode = _opcode;
+
     cpu.PC += 2;
     switch ((opcode & 0xF000) >> 12) {
         0x0 => {
