@@ -4,7 +4,7 @@ const CPU = @import("cpu.zig").CPU;
 const print = std.debug.print;
 const fmt = std.fmt;
 
-const VERBOSE_OPCODES: bool = false;
+const VERBOSE_OPCODES: bool = true;
 
 var cpu: *CPU = undefined;
 var opcode: u16 = 0x0000;
@@ -41,7 +41,6 @@ inline fn extract(comptime mask: u16) u16 {
 
 /// unknown opcode
 inline fn opcodeUnknown() void {
-    print("Unknown!!!!!!!!!!!!\n", .{});
     verboseOpcode("Unknown Opcode");
 }
 
@@ -298,7 +297,7 @@ inline fn opcodeDRW() void {
 inline fn opcodeSKPK() void {
     const X = extract(0xF00);
 
-    verboseOpcodeFmt("Skipping next instruction if V{X} ({X}) is pressed", .{X, cpu.V[X]});
+    verboseOpcodeFmt("Skipping next instruction if V{X} ({X}) is pressed", .{ X, cpu.V[X] });
 
     if (cpu.keycodes[cpu.V[X]]) cpu.PC += 2;
 }
@@ -307,9 +306,84 @@ inline fn opcodeSKPK() void {
 inline fn opcodeSKPNK() void {
     const X = extract(0xF00);
 
-    verboseOpcodeFmt("Skipping next instruction if V{X} ({X}) is not pressed", .{X, cpu.V[X]});
+    verboseOpcodeFmt("Skipping next instruction if V{X} ({X}) is not pressed", .{ X, cpu.V[X] });
 
     if (!cpu.keycodes[cpu.V[X]]) cpu.PC += 2;
+}
+
+// 0xFX07 -> put delay timer into V[X]
+inline fn opcodeRDDT() void {
+    const X = extract(0xF00);
+
+    verboseOpcodeFmt("Moving delay timer ({d}) into V{X}", .{ cpu.delayTimer, X });
+
+    cpu.V[X] = cpu.delayTimer;
+}
+
+// 0xFX0A -> wait for keypress and put it into V[X]
+inline fn opcodeWTK() void {
+    const X = extract(0xF00);
+
+    verboseOpcodeFmt("Waiting for keypress and storing it in V{X}", .{X});
+
+    cpu.ioBlock = X;
+}
+
+// 0xFXA1 -> set delay timer to value of V[X]
+inline fn opcodeMOVDT() void {
+    const X = extract(0xF00);
+
+    verboseOpcodeFmt("Setting delay timer to V{X} ({d})", .{ X, cpu.V[X] });
+
+    cpu.delayTimer = cpu.V[X];
+}
+
+// 0xFX18 -> set sound timer to value of V[X]
+inline fn opcodeMOVST() void {
+    const X = extract(0xF00);
+
+    verboseOpcodeFmt("Setting sound timer to V{X} ({d})", .{ X, cpu.V[X] });
+
+    cpu.delayTimer = cpu.V[X];
+}
+
+// 0xFX1E -> value of V[X] is added to I
+inline fn opcodeADDI() void {
+    const X = extract(0xF00);
+
+    verboseOpcodeFmt("Adding V{X}({d}) to I ({d})", .{ X, cpu.V[X], cpu.I });
+
+    @setRuntimeSafety(false);
+    cpu.I += cpu.V[X];
+}
+
+//0xFX33 -> store the BCD representation of V[X] at I
+inline fn opcodeBCD() void {
+    const X = extract(0xF00);
+
+    verboseOpcodeFmt("Storing storing BCD representation of V{X}({d}) in memory at I (0x{X:0>3})", .{X, cpu.V[X], cpu.I});
+
+    cpu.memory[cpu.I] = cpu.V[X] / 100;
+    cpu.memory[cpu.I + 1] = (cpu.V[X] / 10) % 10;
+    cpu.memory[cpu.I + 2] = cpu.V[X] % 10;
+}
+
+//0xFX55 -> store the value of registers 0 to X at location pointed to by I
+inline fn opcodeSTORE() void {
+    const X = extract(0xF00);
+
+    verboseOpcodeFmt("Storing values of register 0..V{X} in memory at I (0x{X:0>3})", .{X, cpu.I});
+
+    // for (0..X) |i| cpu.memory[cpu.I + i] = cpu.V[i];
+    @memcpy(cpu.memory[cpu.I..cpu.I+X], cpu.V[0..X]);
+}
+
+inline fn opcodeLD() void {
+    const X = extract(0xF00);
+
+    verboseOpcodeFmt("Loading memory at I ({X:0>3}) to V0 .. V{X}", .{cpu.I, X});
+
+    @memcpy(cpu.V[0..X], cpu.memory[cpu.I..cpu.I+X]);
 }
 
 pub fn handleOpcode(_cpu: *CPU, _opcode: u16) void {
@@ -318,7 +392,7 @@ pub fn handleOpcode(_cpu: *CPU, _opcode: u16) void {
 
     cpu.PC += 2;
     switch (extract(0xF000)) {
-        0x0 => switch (opcode & 0x00FF) {
+        0x0 => switch (extract(0xFF)) {
             0xE0 => opcodeCLS(),
             0xEE => opcodeRET(),
             else => opcodeUnknown(),
@@ -347,9 +421,20 @@ pub fn handleOpcode(_cpu: *CPU, _opcode: u16) void {
         0xB => opcodeJMPO(),
         0xC => opcodeRAND(),
         0xD => opcodeDRW(),
-        0xE => switch(extract(0xFF)) {
+        0xE => switch (extract(0xFF)) {
             0x9E => opcodeSKPK(),
             0xA1 => opcodeSKPNK(),
+            else => opcodeUnknown(),
+        },
+        0xF => switch (extract(0xFF)) {
+            0x07 => opcodeRDDT(),
+            0x0A => opcodeWTK(),
+            0xA1 => opcodeMOVDT(),
+            0x18 => opcodeMOVST(),
+            0x1E => opcodeADDI(),
+            0x33 => opcodeBCD(),
+            0x55 => opcodeSTORE(),
+            0x65 => opcodeLD(),
             else => opcodeUnknown(),
         },
         else => opcodeUnknown(),

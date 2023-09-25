@@ -40,7 +40,7 @@ pub const CPU = struct {
     I: u16 = 0,
     keycodes: [16]bool,
     keycode: i32 = 0,
-    ioBlock: bool = false,
+    ioBlock: isize = -1, // if io is blocked, stores the register where the keypress should be saved to
     delayTimer: u8 = 0,
     soundTimer: u8 = 0,
     graphicalBuffer: [64 * 32]u1,
@@ -93,6 +93,11 @@ pub const CPU = struct {
         }
 
         if (mapKey) |key| self.keycodes[key] = ev == .key_down;
+        if (mapKey != null and self.ioBlock >= 0){
+            self.V[@intCast(self.ioBlock)] = @intCast(mapKey.?);
+            self.ioBlock = -1;
+        }
+
 
         return CONTINUE_EMULATOR;
     }
@@ -118,7 +123,7 @@ pub const CPU = struct {
         const millis = std.time.milliTimestamp();
         if (millis - self.lastCycle >= 1000 / clock) {
             self.lastCycle = millis;
-            if (!self.ioBlock) return self.cycle();
+            if (!(self.ioBlock != -1)) return self.cycle();
         }
 
         return CONTINUE_EMULATOR;
