@@ -282,11 +282,11 @@ inline fn opcodeDRW() void {
     const sx = cpu.V[X];
     const sy = cpu.V[Y];
 
-    verboseOpcodeFmt("Drawing sprice at {d}, {d} with length {d}", .{ X, Y, N });
+    verboseOpcodeFmt("Drawing sprice at {d}, {d} with length {d}", .{ sx, sy, N });
     for (0..N) |i| {
         const pixel = cpu.memory[cpu.I + i];
         inline for (0..8) |j| {
-            if (pixel & (0b10000000 >> j) > 0) {
+            if (pixel & (0x80 >> j) > 0) {
                 cpu.V[0xF] = @max(cpu.V[0xF], cpu.graphicalBuffer[(j + sx) % 64 + ((i + sy) % 32) * 64]);
                 cpu.graphicalBuffer[(j + sx) % 64 + ((i + sy) % 32) * 64] ^= 1;
             }

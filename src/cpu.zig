@@ -123,6 +123,7 @@ pub const CPU = struct {
 
         _ = try file.readAll(self.memory[0x200..]);
 
-        std.mem.copy(u8, &self.memory, &fontSet);
+        //std.mem.copy(u8, &self.memory, &fontSet);
+        @memcpy(self.memory[0..fontSet.len], fontSet[0..]);
     }
 };
