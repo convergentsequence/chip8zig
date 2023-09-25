@@ -294,6 +294,24 @@ inline fn opcodeDRW() void {
     }
 }
 
+/// 0xEX9E -> skip next intruction if key in V[X] is pressed
+inline fn opcodeSKPK() void {
+    const X = extract(0xF00);
+
+    verboseOpcodeFmt("Skipping next instruction if V{X} ({X}) is pressed", .{X, cpu.V[X]});
+
+    if (cpu.keycodes[cpu.V[X]]) cpu.PC += 2;
+}
+
+/// 0xEXA1 -> skip next intruction if key in V[X] is not pressed
+inline fn opcodeSKPNK() void {
+    const X = extract(0xF00);
+
+    verboseOpcodeFmt("Skipping next instruction if V{X} ({X}) is not pressed", .{X, cpu.V[X]});
+
+    if (!cpu.keycodes[cpu.V[X]]) cpu.PC += 2;
+}
+
 pub fn handleOpcode(_cpu: *CPU, _opcode: u16) void {
     cpu = _cpu;
     opcode = _opcode;
@@ -329,6 +347,11 @@ pub fn handleOpcode(_cpu: *CPU, _opcode: u16) void {
         0xB => opcodeJMPO(),
         0xC => opcodeRAND(),
         0xD => opcodeDRW(),
+        0xE => switch(extract(0xFF)) {
+            0x9E => opcodeSKPK(),
+            0xA1 => opcodeSKPNK(),
+            else => opcodeUnknown(),
+        },
         else => opcodeUnknown(),
     }
 }
