@@ -4,7 +4,7 @@ const CPU = @import("cpu.zig").CPU;
 const print = std.debug.print;
 const fmt = std.fmt;
 
-const VERBOSE_OPCODES: bool = true;
+const VERBOSE_OPCODES: bool = false;
 
 var cpu: *CPU = undefined;
 var opcode: u16 = 0x0000;
@@ -42,6 +42,7 @@ inline fn extract(comptime mask: u16) u16 {
 /// unknown opcode
 inline fn opcodeUnknown() void {
     verboseOpcode("Unknown Opcode");
+    print("Unknown Opcode\n", .{});
 }
 
 /// 0x00E0 -> clear screen
@@ -98,14 +99,14 @@ inline fn opcodeSKPNEQ() void {
     if (cpu.V[X] != RR) cpu.PC += 2;
 }
 
-/// 0x5XRR -> skip next instruction if V[X] == V[Y]
+/// 0x5XY0 -> skip next instruction if V[X] == V[Y]
 inline fn opcodeSKPEQV() void {
     const X = extract(0xF00);
     const Y = extract(0xF0);
 
     verboseOpcodeFmt("Skipping next instruction if V{X}({d}) == V{X}({d})", .{ X, cpu.V[X], Y, cpu.V[Y] });
 
-    if (cpu.V[X] == cpu.V[Y]) cpu.PC += 1;
+    if (cpu.V[X] == cpu.V[Y]) cpu.PC += 2;
 }
 
 /// 0x6XRR -> move constant RR into V[X]
@@ -148,15 +149,14 @@ inline fn opcodeOR() void {
     cpu.V[X] = cpu.V[X] | cpu.V[Y];
 }
 
-/// 0x8XY2 -> add V[Y] to V[X]
-inline fn opcodeADDV() void {
+/// 0x8XY2 -> and V[Y] to V[X]
+inline fn opcodeAND() void {
     const X = extract(0xF00);
     const Y = extract(0xF0);
 
     verboseOpcodeFmt("Adding V{X}({d}) to V{X}({d})", .{ Y, cpu.V[Y], X, cpu.V[X] });
 
-    @setRuntimeSafety(false);
-    cpu.V[X] += cpu.V[Y];
+    cpu.V[X] &= cpu.V[Y];
 }
 
 /// 0x8XY3 -> stores the result of V[X] xor V[Y] into V[X]
@@ -189,7 +189,7 @@ inline fn opcodeSUBVC() void {
     const Y = extract(0xF0);
 
     verboseOpcodeFmt("Subtracting V{X}({d}) from V{X}({d}) and storing carry in VF", .{ Y, cpu.V[Y], X, cpu.V[X] });
-    cpu.V[0xF] = @intFromBool(cpu.V[X] > cpu.V[Y]);
+    cpu.V[0xF] = @intFromBool(cpu.V[X] >= cpu.V[Y]);
 
     @setRuntimeSafety(false);
     cpu.V[X] -= cpu.V[Y];
@@ -200,6 +200,7 @@ inline fn opcodeRSHIFT() void {
     const X = extract(0xF00);
 
     verboseOpcodeFmt("Shifting V{X}({d}) right and storing first bit in VF", .{ X, cpu.V[X] });
+
     cpu.V[0xF] = cpu.V[X] & 1;
     cpu.V[X] >>= 1;
 }
@@ -224,7 +225,7 @@ inline fn opcodeLSHIFT() void {
     verboseOpcodeFmt("Shifting V{X}({d}) left and storing most significant bit in VF", .{ X, cpu.V[X] });
 
     cpu.V[0xF] = cpu.V[X] >> 7;
-    cpu.V[0xF] <<= 1;
+    cpu.V[X] <<= 1;
 }
 
 /// 0x9XYN -> skip next instruction if V[X] != V[Y]
@@ -280,13 +281,15 @@ inline fn opcodeDRW() void {
     const N = extract(0xF);
     const sx = cpu.V[X];
     const sy = cpu.V[Y];
+    cpu.V[0xF] = 0;
 
-    verboseOpcodeFmt("Drawing sprice at {d}, {d} with length {d}", .{ sx, sy, N });
+    verboseOpcodeFmt("Drawing sprite at {d}, {d} with length {d}", .{ sx, sy, N });
+    var pixel: u8 = 0;
     for (0..N) |i| {
-        const pixel = cpu.memory[cpu.I + i];
+        pixel = cpu.memory[cpu.I + i];
         inline for (0..8) |j| {
-            if (pixel & (0x80 >> j) > 0) {
-                cpu.V[0xF] = @max(cpu.V[0xF], cpu.graphicalBuffer[(j + sx) % 64 + ((i + sy) % 32) * 64]);
+            if (pixel & (0x80 >> j) != 0) {
+                cpu.V[0xF] = cpu.graphicalBuffer[(j + sx) % 64 + ((i + sy) % 32) * 64];
                 cpu.graphicalBuffer[(j + sx) % 64 + ((i + sy) % 32) * 64] ^= 1;
             }
         }
@@ -329,7 +332,7 @@ inline fn opcodeWTK() void {
     cpu.ioBlock = X;
 }
 
-// 0xFXA1 -> set delay timer to value of V[X]
+// 0xFX15 -> set delay timer to value of V[X]
 inline fn opcodeMOVDT() void {
     const X = extract(0xF00);
 
@@ -357,6 +360,12 @@ inline fn opcodeADDI() void {
     cpu.I += cpu.V[X];
 }
 
+inline fn opcodeCHR() void {
+    const X = extract(0xF00);
+
+    cpu.I = cpu.V[X] * 5;
+}
+
 //0xFX33 -> store the BCD representation of V[X] at I
 inline fn opcodeBCD() void {
     const X = extract(0xF00);
@@ -374,16 +383,17 @@ inline fn opcodeSTORE() void {
 
     verboseOpcodeFmt("Storing values of register 0..V{X} in memory at I (0x{X:0>3})", .{X, cpu.I});
 
-    // for (0..X) |i| cpu.memory[cpu.I + i] = cpu.V[i];
-    @memcpy(cpu.memory[cpu.I..cpu.I+X], cpu.V[0..X]);
+    // for (0..X+1) |i| cpu.memory[cpu.I + i] = cpu.V[i];
+    @memcpy(cpu.memory[cpu.I..cpu.I+X+1], cpu.V[0..X+1]);
 }
 
+// 0xFX65 -> load registers from V0 to VX from location I
 inline fn opcodeLD() void {
     const X = extract(0xF00);
 
     verboseOpcodeFmt("Loading memory at I ({X:0>3}) to V0 .. V{X}", .{cpu.I, X});
 
-    @memcpy(cpu.V[0..X], cpu.memory[cpu.I..cpu.I+X]);
+    @memcpy(cpu.V[0..X+1], cpu.memory[cpu.I..cpu.I+X+1]);
 }
 
 pub fn handleOpcode(_cpu: *CPU, _opcode: u16) void {
@@ -407,7 +417,7 @@ pub fn handleOpcode(_cpu: *CPU, _opcode: u16) void {
         0x8 => switch (extract(0xF)) {
             0x0 => opcodeMOVV(),
             0x1 => opcodeOR(),
-            0x2 => opcodeADDV(),
+            0x2 => opcodeAND(),
             0x3 => opcodeXOR(),
             0x4 => opcodeADDVC(),
             0x5 => opcodeSUBVC(),
@@ -429,9 +439,10 @@ pub fn handleOpcode(_cpu: *CPU, _opcode: u16) void {
         0xF => switch (extract(0xFF)) {
             0x07 => opcodeRDDT(),
             0x0A => opcodeWTK(),
-            0xA1 => opcodeMOVDT(),
+            0x15 => opcodeMOVDT(),
             0x18 => opcodeMOVST(),
             0x1E => opcodeADDI(),
+            0x29 => opcodeCHR(),
             0x33 => opcodeBCD(),
             0x55 => opcodeSTORE(),
             0x65 => opcodeLD(),

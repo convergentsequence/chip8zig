@@ -18,11 +18,23 @@ fn getRomPath() ![:0]const u8 {
     return target.?;
 }
 
+const defaultClock = 1000;
+fn getClockSpeed() !usize {
+    var args = std.process.args();
+    _ = args.next();
+    _ = args.next();
+    const clock = args.next();
+
+    if (clock == null) return defaultClock;
+    return try std.fmt.parseUnsigned(usize, clock.?, 10);
+}
+
 pub fn main() !void {
     print("Starting emulator...\n", .{});
     defer print("Stopping emulator...\n", .{});
 
     const romPath = try getRomPath();
+    const clock = try getClockSpeed();
 
     var graphics = try g.Graphics.init(640 * 2, 320 * 2);
     defer graphics.quit();
@@ -35,6 +47,6 @@ pub fn main() !void {
             if (!cpu.handleIO(ev)) break :mainLoop;
         }
         try graphics.clockedRender(&cpu);
-        if(!cpu.clockedCycle(500)) break;
+        if(!cpu.clockedCycle(clock)) break;
     }
 }

@@ -4,8 +4,6 @@ const opcodes = @import("opcodes.zig");
 
 const print = std.debug.print;
 
-const VerboseOpcode: bool = true;
-
 pub const CPU = struct {
     const Self = @This();
 
@@ -55,11 +53,6 @@ pub const CPU = struct {
         };
     }
 
-    inline fn verboseOpcode(PC: u16, opcode: u16, msg: [:0]const u8) void {
-        if (VerboseOpcode)
-            print("0x{X:0>3}: 0x{X:0>4} {s}\n", .{ PC, opcode, msg });
-    }
-
     // returns false if emulator should exit
     pub fn handleIO(self: *Self, ev: SDL.Event) bool {
         var mapKey: ?usize = null;
@@ -69,16 +62,16 @@ pub const CPU = struct {
             },
             .key_down, .key_up => |key| {
                 mapKey = switch (key.scancode) {
-                    .@"0" => 0x0,
-                    .@"1" => 0x1,
-                    .@"2" => 0x2,
-                    .@"3" => 0x3,
-                    .@"4" => 0x4,
-                    .@"5" => 0x5,
-                    .@"6" => 0x6,
-                    .@"7" => 0x7,
-                    .@"8" => 0x8,
-                    .@"9" => 0x9,
+                    .@"0", .keypad_0 => 0x0,
+                    .@"1", .keypad_1 => 0x1,
+                    .@"2", .keypad_2 => 0x2,
+                    .@"3", .keypad_3 => 0x3,
+                    .@"4", .keypad_4 => 0x4,
+                    .@"5", .keypad_5 => 0x5,
+                    .@"6", .keypad_6 => 0x6,
+                    .@"7", .keypad_7 => 0x7,
+                    .@"8", .keypad_8 => 0x8,
+                    .@"9", .keypad_9 => 0x9,
                     .a => 0xA,
                     .b => 0xB,
                     .c => 0xC,
@@ -93,16 +86,16 @@ pub const CPU = struct {
         }
 
         if (mapKey) |key| self.keycodes[key] = ev == .key_down;
-        if (mapKey != null and self.ioBlock >= 0){
+        if (mapKey != null and self.ioBlock >= 0 and ev == .key_down) {
             self.V[@intCast(self.ioBlock)] = @intCast(mapKey.?);
             self.ioBlock = -1;
         }
-
 
         return CONTINUE_EMULATOR;
     }
 
     pub fn decrementTimers(self: *Self) void {
+        if(self.ioBlock != -1) return;
         if (self.delayTimer > 0) self.delayTimer -= 1;
         if (self.soundTimer > 0) self.soundTimer -= 1;
     }
@@ -119,10 +112,10 @@ pub const CPU = struct {
         return CONTINUE_EMULATOR;
     }
 
-    pub fn clockedCycle(self: *Self, comptime clock: usize) bool {
-        const millis = std.time.milliTimestamp();
-        if (millis - self.lastCycle >= 1000 / clock) {
-            self.lastCycle = millis;
+    pub fn clockedCycle(self: *Self, clock: usize) bool {
+        const micro = std.time.microTimestamp();
+        if (micro - self.lastCycle >= 1_000_000 / clock) {
+            self.lastCycle = micro;
             if (!(self.ioBlock != -1)) return self.cycle();
         }
 
